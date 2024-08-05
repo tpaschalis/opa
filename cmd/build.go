@@ -24,14 +24,14 @@ import (
 
 const defaultPublicKeyID = "default"
 
-type buildParams struct {
+type BuildParams struct {
 	capabilities       *capabilitiesFlag
 	target             *util.EnumFlag
-	bundleMode         bool
+	BundleMode         bool
 	pruneUnused        bool
 	optimizationLevel  int
 	entrypoints        repeatedStringFlag
-	outputFile         string
+	OutputFile         string
 	revision           stringptrFlag
 	ignore             []string
 	debug              bool
@@ -48,8 +48,8 @@ type buildParams struct {
 	followSymlinks     bool
 }
 
-func newBuildParams() buildParams {
-	return buildParams{
+func NewBuildParams() BuildParams {
+	return BuildParams{
 		capabilities: newcapabilitiesFlag(),
 		target:       util.NewEnumFlag(compile.TargetRego, compile.Targets),
 	}
@@ -57,7 +57,7 @@ func newBuildParams() buildParams {
 
 func init() {
 
-	buildParams := newBuildParams()
+	buildParams := NewBuildParams()
 
 	var buildCommand = &cobra.Command{
 		Use:   "build <path> [<path> [...]]",
@@ -237,11 +237,11 @@ against OPA v0.22.0:
 	buildCommand.Flags().IntVarP(&buildParams.optimizationLevel, "optimize", "O", 0, "set optimization level")
 	buildCommand.Flags().VarP(&buildParams.entrypoints, "entrypoint", "e", "set slash separated entrypoint path")
 	buildCommand.Flags().VarP(&buildParams.revision, "revision", "r", "set output bundle revision")
-	buildCommand.Flags().StringVarP(&buildParams.outputFile, "output", "o", "bundle.tar.gz", "set the output filename")
+	buildCommand.Flags().StringVarP(&buildParams.OutputFile, "output", "o", "bundle.tar.gz", "set the output filename")
 	buildCommand.Flags().StringVar(&buildParams.ns, "partial-namespace", "partial", "set the namespace to use for partially evaluated files in an optimized bundle")
 	buildCommand.Flags().BoolVar(&buildParams.followSymlinks, "follow-symlinks", false, "follow symlinks in the input set of paths when building the bundle")
 
-	addBundleModeFlag(buildCommand.Flags(), &buildParams.bundleMode, false)
+	addBundleModeFlag(buildCommand.Flags(), &buildParams.BundleMode, false)
 	addIgnoreFlag(buildCommand.Flags(), &buildParams.ignore)
 	addCapabilitiesFlag(buildCommand.Flags(), buildParams.capabilities)
 
@@ -262,7 +262,11 @@ against OPA v0.22.0:
 	RootCommand.AddCommand(buildCommand)
 }
 
-func dobuild(params buildParams, args []string) error {
+func DoBuild(params BuildParams, args []string) error {
+	return dobuild(params, args)
+}
+
+func dobuild(params BuildParams, args []string) error {
 
 	buf := bytes.NewBuffer(nil)
 
@@ -277,7 +281,7 @@ func dobuild(params buildParams, args []string) error {
 		return err
 	}
 
-	if (bvc != nil || bsc != nil) && !params.bundleMode {
+	if (bvc != nil || bsc != nil) && !params.BundleMode {
 		return fmt.Errorf("enable bundle mode (ie. --bundle) to verify or sign bundle files or directories")
 	}
 
@@ -294,14 +298,14 @@ func dobuild(params buildParams, args []string) error {
 	compiler := compile.New().
 		WithCapabilities(capabilities).
 		WithTarget(params.target.String()).
-		WithAsBundle(params.bundleMode).
+		WithAsBundle(params.BundleMode).
 		WithPruneUnused(params.pruneUnused).
 		WithOptimizationLevel(params.optimizationLevel).
 		WithOutput(buf).
 		WithEntrypoints(params.entrypoints.v...).
 		WithRegoAnnotationEntrypoints(true).
 		WithPaths(args...).
-		WithFilter(buildCommandLoaderFilter(params.bundleMode, params.ignore)).
+		WithFilter(buildCommandLoaderFilter(params.BundleMode, params.ignore)).
 		WithBundleVerificationConfig(bvc).
 		WithBundleSigningConfig(bsc).
 		WithPartialNamespace(params.ns).
@@ -332,7 +336,7 @@ func dobuild(params buildParams, args []string) error {
 		return err
 	}
 
-	out, err := os.Create(params.outputFile)
+	out, err := os.Create(params.OutputFile)
 	if err != nil {
 		return err
 	}
